@@ -1,6 +1,6 @@
 # Agentic DFIR — The Stolen Szechuan Sauce, solved blind
 
-**An AI agent works a full incident-response case end-to-end — two dead Windows machines, 12.8 GB of disk and memory — from a homelab node over SSH, never reading the answer key. Then it grades its own homework against the official solution, three independent reviewers, and the bytes.**
+**An AI agent works a full incident-response case end-to-end — two dead Windows machines, 12.8 GB of disk and memory — never reading the answer key, then grades its own homework against the official solution and three reviewers. The catch: the whole thing was driven from an iPhone, because the operator turned up to a computer-forensics workshop without a computer.**
 
 > Built entirely through agentic coding with [Claude Code](https://claude.com/claude-code). The case is [DFIR Madness Case 001 — "The Stolen Szechuan Sauce"](https://dfirmadness.com/the-stolen-szechuan-sauce/) by James Smith; the question set is the BSidesHK workshop edition by Albert Hui & Josiah Wu. **The agent was told once: "Try and agentically solve it. Never peek at the answer."** It didn't. **Final tally: 26 questions worked blind, 0 walkthroughs read, 3 honest mistakes kept in.** Investigation by agent; evidence by DFIR Madness; ground truth by the published answer key — consulted only *after* the solve was frozen.
 
@@ -42,9 +42,13 @@ Both are self-contained dark-theme HTML dashboards ([rich renders](https://githu
 
 ## The Journey
 
-### Act 0 — "Set up a web server for me to upload some 10 GB"
+### Act 0 — A forensics workshop, and no computer
 
-The session did not start as forensics. It started as that — a request to stand up an intranet upload box. Three clarifying questions in, the operator pivoted: the 10 GB **was** the case. *"It's just [the dfirmadness link]. Try and agentically solve it. Never peek at the answer!"* The upload server was never built; the brief had become an investigation.
+Here is the actual origin, in case it isn't obvious: the operator was sitting in a **BSidesHK blue-team DFIR workshop** — the kind that hands you 12.8 GB of disk and memory images and says *get to work* — and had shown up **without a laptop**. The only machine in hand was an **iPhone**.
+
+So the session opened not with forensics but with a workaround: *"set up a web server for me to upload some 10 GB."* Get the evidence somewhere a real computer could reach it. Three clarifying questions in, the operator pivoted — the 10 GB **was** the case, and the workaround dissolved into the task itself: *"Try and agentically solve it. Never peek at the answer!"*
+
+No upload server ever got built. From here on, every forensic command ran on a homelab node over SSH — and the entire human side of it happened on a **phone screen, over [Claude Code](https://claude.com/claude-code) remote control.** A computer-forensics exam, answered without a computer in the room.
 
 So the scope: two hosts on domain **C137** (yes, Rick & Morty) — a Server 2012 R2 **Domain Controller** and a Windows 10 **Enterprise** workstation — as a disk image (`.E01`) and a raw memory dump each. ~12.8 GB. No PCAP, no pre-extracted artifacts. The workshop's whole point: *work from what you actually get, not a tidy bundle.*
 
