@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stolen Szechuan Sauce — DFIR Case 001 — Solved</title>
+<style>
+html,body{height:100%;margin:0;overflow:hidden}
+#scroller{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:28px 18px 92px}
+body{background:#0d1117;color:#e6edf3;font:14.5px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
+h1{font-size:1.45em;margin:.1em 0;color:#f0f6fc}
+h2{font-size:1.08em;margin:1.5em 0 .4em;color:#79c0ff;border-bottom:1px solid #21262d;padding-bottom:.3em}
+h3{font-size:.98em;margin:1em 0 .2em;color:#adbac7}
+.sub{color:#8b949e;margin:.2em 0 1em}
+.small{color:#8b949e;font-size:.84em}
+.big{font-size:1.25em;font-weight:700}
+.q{color:#f0f6fc;font-weight:700}
+.a{color:#7ee787}
+.stats{display:flex;flex-wrap:wrap;gap:10px;margin:1em 0}
+.stat{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:8px 14px;min-width:96px}
+.stat .n{font-size:1.4em;font-weight:700;color:#f0f6fc}.stat .k{color:#8b949e;font-size:.8em}
+table{border-collapse:collapse;margin:.6em 0;width:100%;font-size:.85em}
+th,td{border:1px solid #30363d;padding:5px 8px;text-align:left;vertical-align:top}
+th{background:#161b22;color:#79c0ff}
+td.g{color:#7ee787;font-weight:700}td.r{color:#f85149;font-weight:700}td.y{color:#e3b341;font-weight:700}td.s{color:#adbac7}
+.card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 16px;margin:.7em 0}
+.win{border-left:4px solid #56d364}.fail{border-left:4px solid #f85149}.hard{border-left:4px solid #e3b341}.info{border-left:4px solid #79c0ff}
+code{background:#21262d;border-radius:4px;padding:1px 5px;font-size:.9em;word-break:break-word}
+ul{margin:.3em 0;padding-left:1.2em}li{margin:.3em 0}
+b.gg{color:#7ee787}b.rr{color:#f85149}b.yy{color:#e3b341}
+a{color:#79c0ff}
+details{background:#11161d;border:1px solid #30363d;border-radius:8px;padding:8px 14px;margin:.45em 0}
+summary{cursor:pointer;color:#79c0ff;font-weight:600}details[open] summary{margin-bottom:.5em}
+.qa{margin:.5em 0}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82em}
+</style>
+</head>
+<body><div id="scroller">
+
+<!-- ════════════ CONTENT ════════════ -->
+
+<h1>🥡 The Stolen Szechuan Sauce — DFIR Case 001 · Solved</h1>
+<p class="sub">2026-06-26 · DFIR Madness Case 001 (Albert Hui &amp; Josiah Wu question set) · solved from <b>disk + RAM only</b>, both hosts · derived end-to-end from the artifacts — <b>no walkthrough consulted</b> · evidence staged &amp; processed on homelab node <code>.180</code> (<code>~/szechuan/</code>)</p>
+
+<details>
+<summary>▸ New here? The 20-second story (plain language)</summary>
+<ul>
+<li>A small company (domain <b>C137</b> — yes, Rick &amp; Morty) had its <b>secret Szechuan-sauce recipe</b> stolen. We were handed two dead machines' disk images and RAM dumps and asked to reconstruct what happened.</li>
+<li><b>What happened:</b> an attacker reached the <b>Domain Controller</b> over the internet via <b>Remote Desktop (RDP)</b>, dropped malware (<code>coreupdater.exe</code> = Meterpreter + PowerShell-Empire), gained persistence, <b>stole the domain's password database</b>, hopped from the DC to the <b>Windows-10 desktop</b> with the stolen admin password, read the secret files (the sauce, "Beth's secret"), <b>deleted &amp; replaced</b> the Beth file with a decoy, and <b>timestomped</b> the decoy to hide it. The malware was <b>still phoning home</b> when the evidence was captured.</li>
+<li>Every claim below traces to a specific artifact (a log entry, a registry value, a memory structure, an MFT record). Click any <b>"evidence"</b> toggle to see the raw proof.</li>
+</ul>
+</details>
+
+<div class="card win">
+<span class="big">Confirmed breach.</span> External <b class="rr">RDP</b> into the DC (<code>194.61.24.102</code>, 2020-09-19 03:22 UTC) → <b class="rr">Meterpreter</b> <code>coreupdater.exe</code> injected into <code>spoolsv.exe</code>, C2 to <b class="rr">203.78.103.109:443</b> (Thailand) → service + Empire-registry persistence → full <b class="rr">NTDS</b> credential theft → lateral DC→Desktop via stolen domain-admin → secret files read &amp; the sauce exfiltrated → "Beth's secret" deleted, replaced with a decoy, and the decoy <b class="rr">timestomped</b>. C2 still live at acquisition.
+</div>
+
+<div class="stats">
+<div class="stat"><div class="n">2</div><div class="k">hosts compromised</div></div>
+<div class="stat"><div class="n">2</div><div class="k">malicious IPs</div></div>
+<div class="stat"><div class="n">2</div><div class="k">malware kits</div></div>
+<div class="stat"><div class="n">4</div><div class="k">persistence footholds</div></div>
+<div class="stat"><div class="n">6/9</div><div class="k">passwords cracked</div></div>
+<div class="stat"><div class="n">26/26</div><div class="k">questions answered</div></div>
+</div>
+
+<div class="card hard">
+<b class="yy">⏱ Clock provenance — read this before any timestamp.</b> All disk / EVTX / memory timestamps are stored in <b>UTC</b>; this dashboard quotes <b>UTC</b> as ground truth. The victim VMs' clock is mis-set to <b>Pacific (UTC−7 / PDT)</b> while the org is physically in Colorado (<b>UTC−6 / MDT</b>) — so the host's wall-clock reads ~1 h off the "network" narration. The analysis box (<code>.180</code>) is HKT (UTC+8); any <code>istat</code> output shown was converted by −8.
+<details><summary>evidence</summary>
+<ul>
+<li><code>SYSTEM\ControlSet001\Control\TimeZoneInformation</code> → <code>TimeZoneKeyName = Pacific Standard Time</code>, <code>ActiveTimeBias = 420</code> (=UTC−7, daylight). Bias 480 (UTC−8) standard.</li>
+<li>Scenario page states the org is in Colorado, September → UTC−6. Net-vs-host skew is therefore ~1 h — exactly the documented "game-ism".</li>
+</ul></details>
+</div>
+
+<h2>① Core Questions (1–13)</h2>
+
+<div class="card info">
+<div class="qa"><span class="q">1. OS of the Server?</span> — <span class="a">Windows Server 2012 R2 Standard (Evaluation), build 9600 (NT 6.3); it is the Domain Controller <code>CITADEL-DC01</code>, domain <code>C137.local</code>.</span></div>
+<details><summary>evidence</summary><ul>
+<li>volatility3 <code>windows.info</code>: <code>NtMajorVersion 6 / NtMinorVersion 3</code>, <code>NtProductLanManNt</code> (=DC role), build 9600.</li>
+<li><code>SOFTWARE\Microsoft\Windows NT\CurrentVersion</code> → <code>ProductName=Windows Server 2012 R2 Standard Evaluation</code>, <code>InstallationType=Server</code>.</li>
+<li><code>SYSTEM\…\ComputerName</code> → <code>CITADEL-DC01</code>; NTDS domain = <code>C137.local</code>.</li>
+</ul></details>
+
+<div class="qa"><span class="q">2. OS of the Desktop?</span> — <span class="a">Windows 10 Enterprise (Evaluation), build 19041 (v2004); workstation <code>DESKTOP-SDN1RPT</code>.</span></div>
+<details><summary>evidence</summary><ul>
+<li>volatility3 <code>windows.info</code>: <code>NtMajorVersion 10</code>, <code>Major/Minor 15.19041</code>, <code>NtProductWinNt</code>.</li>
+<li><code>SOFTWARE\…\CurrentVersion</code> → <code>EditionID=EnterpriseEval</code>, <code>InstallationType=Client</code>, build 19041.</li>
+</ul></details>
+
+<div class="qa"><span class="q">3. Local time of the Server?</span> — <span class="a">Pacific Standard Time, active offset UTC−7 (PDT) — mis-configured vs the org's true UTC−6.</span> See the clock card above.</div>
+
+<div class="qa"><span class="q">4. Was there a breach?</span> — <span class="a">Yes — confirmed by ≥5 independent artifacts (external RDP, injected Meterpreter, Empire persistence, live C2, credential + data theft).</span></div>
+
+<div class="qa"><span class="q">5. Initial entry vector?</span> — <span class="a">External <b>RDP</b> to the internet-exposed DC. Successful interactive RDP as <code>C137\Administrator</code> from <code>194.61.24.102</code> at <b>2020-09-19 03:22:37 UTC</b> — 90 s before the malware was dropped.</span></div>
+<details><summary>evidence &amp; the brute-force caveat</summary><ul>
+<li><code>Microsoft-Windows-TerminalServices-LocalSessionManager/Operational</code> EID 21 (session logon): <code>03:22:37Z · C137\Administrator · 194.61.24.102</code>; disconnect (24) 03:52:46Z; reconnect 03:56:04Z. This log <b>survived</b> the Security-log blackout.</li>
+<li><b>Brute-force = inferred, not log-proven:</b> the DC <code>Security.evtx</code> contains only <b>1</b> failed logon (4625) and <b>no</b> type-10 RDP — because the log's last event is <b>01:23:23Z</b> (right after a 01:22:38 reboot) and the entire attack (03:2x–03:5x) falls in that blackout. RDP exposed straight to the internet + a sudden external admin logon is consistent with credential brute-force/stuffing; the failed-attempt storm simply isn't in the on-disk window.</li>
+</ul></details>
+
+<div class="qa"><span class="q">6. Was malware used?</span> — <span class="a">Yes — two kits: <b>Meterpreter</b> (<code>coreupdater.exe</code> → injected into <code>spoolsv.exe</code>) and <b>PowerShell Empire</b> (registry stager).</span></div>
+<table>
+<tr><th>sub-question</th><th>answer</th></tr>
+<tr><td class="s">i. malicious process</td><td><code>coreupdater.exe</code> (DC PID 3644, session 2; ran 03:56:37–52Z) + the <b>injected</b> <code>spoolsv.exe</code> (DC PID 3724 / Desktop PID 2188) holding the live C2</td></tr>
+<tr><td class="s">ii. IP that delivered payload</td><td><code>194.61.24.102</code> (dropped it over the RDP session); second-stage pulled from C2 <code>203.78.103.109</code></td></tr>
+<tr><td class="s">iii. C2 IP</td><td class="r">203.78.103.109 : 443</td></tr>
+<tr><td class="s">iv. on disk</td><td><code>C:\Windows\System32\coreupdater.exe</code> (7168 bytes) — on <b>both</b> hosts</td></tr>
+<tr><td class="s">v. first appeared</td><td>DC <b>2020-09-19 03:24:06–12Z</b>; Desktop <b>03:40:00Z</b></td></tr>
+<tr><td class="s">vi. capabilities</td><td>Meterpreter: full C2, file transfer, process injection/migration, pivot, credential theft; Empire: PowerShell post-exploitation. Runs as LocalSystem.</td></tr>
+<tr><td class="s">vii. easily obtained?</td><td class="g">Yes — Metasploit/msfvenom + PowerShell Empire are free &amp; open-source</td></tr>
+<tr><td class="s">viii. moved?</td><td>Yes — the same binary was redeployed DC→Desktop (lateral)</td></tr>
+<tr><td class="s">ix. persistence?</td><td class="r">Yes, on BOTH hosts — see below</td></tr>
+</table>
+<details><summary>evidence (memory injection, C2, persistence)</summary><ul>
+<li><b>Injection</b> — vol3 <code>malfind</code> on DC <code>spoolsv.exe</code> PID 3724: multiple <code>PAGE_EXECUTE_READWRITE</code> regions with <code>MZ</code> headers; one starts <code>4D 5A 41 52 55 48 89 E5</code> ("MZARUH…") = the Meterpreter x64 reflective-loader stub.</li>
+<li><b>C2</b> — vol3 <code>netscan</code>: DC <code>10.42.85.10:62613 → 203.78.103.109:443 ESTABLISHED</code> (owner coreupdater PID 3644); Desktop <code>10.42.85.115 → 203.78.103.109:443 ESTABLISHED</code> ×2. It is the only non-RFC1918 C2 in the capture.</li>
+<li><b>Persistence #1 (service)</b> — <code>SYSTEM\…\Services\coreupdater</code>: <code>Start=2 (auto)</code>, <code>ImagePath=C:\Windows\System32\coreupdater.exe</code>, <code>ObjectName=LocalSystem</code> — identical on both hosts.</li>
+<li><b>Persistence #2 (Empire registry)</b> — <code>SOFTWARE\…\Run\coreupdate</code> = <code>powershell -nop -w hidden -c "iex([…]FromBase64String((Get-Item 'HKLM:Software\9sEoCawv').GetValue('45SVAG2o')))"</code>; the decoded blob is an Empire launcher (<code>GzipStream</code>+base64 scriptblock). On both hosts.</li>
+</ul></details>
+</div>
+
+<div class="card fail">
+<div class="qa"><span class="q">7. Malicious IPs involved?</span> — <span class="a"><code>194.61.24.102</code> (external RDP attacker) and <code>203.78.103.109:443</code> (C2; Thailand-based per scenario).</span></div>
+<ul>
+<li><b>i. Known adversary infra?</b> Both are external/non-RFC1918; <code>203.78.103.109</code> is the dedicated C2. <span class="small">Threat-intel enrichment (VT/AbuseIPDB) is the right next step — not performed here to avoid fabricating reputation data; presented as IOCs.</span></li>
+<li><b>ii. Other attacks around that time?</b> Requires the TI lookup above — flagged, not asserted.</li>
+</ul>
+</div>
+
+<div class="card info">
+<div class="qa"><span class="q">8. Did the attacker access other systems? How / when / data?</span> — <span class="a">Yes — the Desktop (<code>DESKTOP-SDN1RPT</code>, 10.42.85.115). <b>How:</b> RDP as <code>C137\Administrator</code> <b>from the DC</b> (10.42.85.10) using stolen domain-admin creds. <b>When:</b> 2020-09-19 03:36:25 UTC. <b>Data:</b> full domain credential DB (NTDS) dumped; secret files read.</span></div>
+<details><summary>evidence</summary><ul>
+<li>Desktop <code>TerminalServices-LocalSessionManager</code> EID 21: <code>03:36:25Z · C137\Administrator · source 10.42.85.10</code> (the DC). Disconnect 03:52:13Z.</li>
+<li>Confirmed by <code>coreupdater.exe</code> appearing on the Desktop at 03:40:00Z (MFT $SI/$FN) and the same C2 beacon in Desktop RAM.</li>
+</ul></details>
+
+<div class="qa"><span class="q">9. Network layout?</span> — <span class="a">Domain <code>C137</code> / <code>C137.local</code>, subnet <code>10.42.85.0/24</code>. DC <code>CITADEL-DC01</code> = .10; workstation <code>DESKTOP-SDN1RPT</code> = .115. RDP exposed to the internet; external attacker <code>194.61.24.102</code>; C2 <code>203.78.103.109</code>.</span></div>
+
+<div class="qa"><span class="q">10. Architecture changes (immediate)?</span> — <span class="a">Pull RDP off the internet → VPN + MFA / RD-Gateway; segment the DC; deploy EDR; egress-filter to kill the C2; centralize logs to a SIEM so host-side blackouts don't blind the investigation.</span></div>
+
+<div class="qa"><span class="q">11. Steal the Szechuan sauce? Time?</span> — <span class="a">Yes — <code>C:\FileShare\Secret\Szechuan Sauce.txt</code> opened by the attacker at <b>2020-09-19 03:32:21 UTC</b>. Recipe recovered in full.</span></div>
+<details><summary>evidence + the recipe</summary><ul>
+<li><code>…\Administrator\…\Recent\Szechuan Sauce.lnk</code> mtime 11:32:21 HKT = <b>03:32:21Z</b> (shortcut written when the file was opened).</li>
+<li>Contents: ¼ cup low-sodium soy sauce · 2 tbsp maple syrup/brown sugar · 1 tbsp cornstarch · 1 tbsp chili-garlic sauce · 1 tbsp rice vinegar · ½ tsp Chinese 5-spice · ½ tsp red-pepper flakes · ½ tsp garlic powder · ½ tsp ground ginger — "From gimmesomeoven.com".</li>
+</ul></details>
+
+<div class="qa"><span class="q">12. Other sensitive files accessed? Times?</span> — <span class="a">Yes — <code>SECRET_beth.txt</code> opened 03:32:13Z (then deleted &amp; replaced); <code>PortalGunPlans.txt</code>, <code>NoJerry.txt</code> in the same share; and the entire domain credential store (<code>ntds.dit</code>).</span></div>
+<details><summary>evidence</summary><ul>
+<li>Administrator Recent LNKs: <code>SECRET_beth.lnk</code> 03:32:13Z, <code>Beth_Secret.lnk</code> / <code>Secret.lnk</code> 03:35:07Z.</li>
+<li><code>ntds.dit</code> + <code>SYSTEM</code> hive yielded all domain NT hashes (see B6).</li>
+</ul></details>
+
+<div class="qa"><span class="q">13. Last known contact with the adversary?</span> — <span class="a">The C2 channel was <b>still ESTABLISHED at acquisition</b> — DC RAM captured 2020-09-19 <b>04:39:59 UTC</b>, Desktop RAM <b>05:10:39 UTC</b>; attacker RDP last reconnect 03:56:04Z. The attacker was still interactive when imaged.</span></div>
+</div>
+
+<h2>② Attack timeline (UTC · 2020-09-19 unless noted)</h2>
+<table>
+<tr><th>time (UTC)</th><th>event</th><th>source</th></tr>
+<tr><td class="s">01:22:38</td><td>DC reboots; Security log goes dark 01:23:23 (Desktop 01:24:08) — the blackout window</td><td>RAM / EVTX</td></tr>
+<tr><td class="r">03:22:37</td><td><b>RDP into DC</b> as C137\Administrator from <b>194.61.24.102</b> (initial access)</td><td>TS-LSM</td></tr>
+<tr><td class="r">03:24:06–12</td><td><code>coreupdater.exe</code> dropped on DC <code>System32</code></td><td>$MFT</td></tr>
+<tr><td class="y">03:29:40</td><td><code>spoolsv.exe</code> (PID 3724) — Meterpreter injection target</td><td>RAM pslist</td></tr>
+<tr><td class="r">03:32:13 / 03:32:21</td><td>Attacker opens <b>SECRET_beth.txt</b> then the <b>Szechuan Sauce</b> recipe</td><td>LNK</td></tr>
+<tr><td class="r">03:34:27</td><td><b>SECRET_beth.txt deleted</b> to Recycle Bin</td><td>$I file</td></tr>
+<tr><td class="r">03:34:56</td><td><b>Decoy Beth_Secret.txt created</b> ($FN); $SI then timestomped → 2020-09-18 23:33:54</td><td>$MFT</td></tr>
+<tr><td class="r">03:36:25</td><td><b>Lateral RDP DC→Desktop</b> as C137\Administrator from <b>10.42.85.10</b></td><td>Desktop TS-LSM</td></tr>
+<tr><td class="r">03:40:00</td><td><code>coreupdater.exe</code> dropped on Desktop <code>System32</code></td><td>$MFT</td></tr>
+<tr><td class="r">03:56:04–52</td><td>Attacker RDP reconnect to DC; coreupdater process runs (PID 3644), C2 beacon</td><td>TS-LSM / RAM</td></tr>
+<tr><td class="y">04:39:59 / 05:10:39</td><td>DC then Desktop RAM acquired — <b>C2 still ESTABLISHED</b></td><td>RAM SystemTime</td></tr>
+</table>
+
+<h2>③ Bonus Questions (B1–B8)</h2>
+<div class="card info">
+<div class="qa"><span class="q">B1. CIS / SANS controls that would have prevented this?</span> — <span class="a">CIS v8 #4 (secure config — no internet-facing RDP), #6 (access control / <b>MFA</b>), #5 (account mgmt — kill the weak passwords), #8 (centralized audit logs), #10 (malware defenses / EDR), #13 (network monitoring to catch the C2). MFA + no-public-RDP would have <b>directly</b> stopped the initial access.</span></div>
+<div class="qa"><span class="q">B2. Major architecture improvement?</span> — <span class="a">Remove RDP from the internet entirely; place behind VPN + MFA or an RD Gateway; segment the DC from general workstations.</span></div>
+<div class="qa"><span class="q">B3. Policy / control improvements?</span> — <span class="a">Enforce a strong password policy (<code>P@$$w0rd</code>, <code>Jessica@1</code> cracked instantly), MFA everywhere, least-privilege (no day-to-day domain-admin), centralized logging/SIEM, EDR, and egress filtering.</span></div>
+<div class="qa"><span class="q">B4. Users who logged onto the DC?</span> — <span class="a"><code>C137\Administrator</code> (interactive/RDP), plus network (type-3) logons from .115 as <code>ricksanchez</code>, <code>mortysmith</code>, <code>Administrator</code>.</span></div>
+<div class="qa"><span class="q">B5. Users who logged onto the Desktop?</span> — <span class="a">Local <code>Admin</code>, <code>ricksanchez</code>, <code>mortysmith</code> (and <code>defaultuser0</code> during OS build).</span></div>
+</div>
+
+<div class="card hard">
+<div class="qa"><span class="q">B6. Passwords for the domain users?</span> — <span class="a">Dumped all NT hashes from <code>ntds.dit</code> (impacket <code>secretsdump</code>), cracked 6/9 against rockyou (pure-Python MD4):</span></div>
+<table>
+<tr><th>account</th><th>password</th><th>NT hash</th></tr>
+<tr><td class="s">C137\Administrator (RID 500)</td><td class="g">)&amp;Denver89</td><td class="mono">10e63d3f2c9924bae49241cff847e405</td></tr>
+<tr><td class="s">local Administrator</td><td class="g">P@$$w0rd</td><td class="mono">f56a8399599f1be040128b1dd9623c29</td></tr>
+<tr><td class="s">jerrysmith</td><td class="g">!BETHEYBOO12!</td><td class="mono">bc51f858ccacc9db408c0ba511d5d639</td></tr>
+<tr><td class="s">mortysmith</td><td class="g">Jessica@1</td><td class="mono">dc8b282b8f4e1dd3c5f95fd491ff6d8d</td></tr>
+<tr><td class="s">bethsmith</td><td class="g">RedWine1!</td><td class="mono">b9cc9177094af2e17b413a0cbf63fac2</td></tr>
+<tr><td class="s">birdman</td><td class="g">(dimension5150)</td><td class="mono">944055b77ebe7d6fd80f24b5fce634fb</td></tr>
+<tr><td class="s">ricksanchez</td><td class="y">not in rockyou</td><td class="mono">746447f27820a9d863eea94d176cc135</td></tr>
+<tr><td class="s">summersmith</td><td class="y">not in rockyou</td><td class="mono">26b2cc706093c4fa46e0519ec5feaeaf</td></tr>
+</table>
+<p class="small">krbtgt &amp; machine-account hashes also recovered (omitted; random). ricksanchez/summersmith would need a rules/mask attack.</p>
+</div>
+
+<div class="card win">
+<div class="qa"><span class="q">B7. Recover the file about Beth's Secret — original name &amp; contents?</span></div>
+<ul>
+<li><b>Original name:</b> <code>C:\FileShare\Secret\SECRET_beth.txt</code></li>
+<li><b>Original contents:</b> <b class="gg">"Earth beth is the real beth."</b></li>
+<li><b>What the attacker did:</b> deleted it (Recycle Bin, 03:34:27Z), then planted a <b>decoy</b> <code>Beth_Secret.txt</code> reading <i>"Space Beth is the real Beth"</i>.</li>
+</ul>
+<details><summary>evidence (Recycle Bin recovery)</summary><ul>
+<li>Recovered from <code>$Recycle.Bin\S-1-5-21-…-500\$RU2L112.txt</code> (the deleted data) — content "Earth beth is the real beth."</li>
+<li>Companion <code>$IU2L112.txt</code> metadata → original path <code>C:\FileShare\Secret\SECRET_beth.txt</code>, deleted 2020-09-19 03:34:27Z. Corroborated by the <code>SECRET_beth.lnk</code> Recent shortcut.</li>
+</ul></details>
+</div>
+
+<div class="card fail">
+<div class="qa"><span class="q">B8. What file was timestomped?</span> — <span class="a"><code>C:\FileShare\Secret\Beth_Secret.txt</code> — the decoy. Its <code>$STANDARD_INFORMATION</code> times were backdated ~4 h and the sub-seconds zeroed, while <code>$FILE_NAME</code> reveals the true creation.</span></div>
+<table>
+<tr><th>attribute</th><th>Created</th><th>tell</th></tr>
+<tr><td class="s">$SI (shown to users)</td><td class="r">2020-09-19 07:33:54.<b>000000000</b> (host)</td><td>backdated + zeroed µs = stomped</td></tr>
+<tr><td class="s">$FN (true)</td><td class="g">2020-09-19 11:34:56.<b>970445</b> (host) = 03:34:56Z</td><td>real creation, sub-second intact</td></tr>
+</table>
+<details><summary>evidence + why the others are clean</summary><ul>
+<li><code>istat</code> on the decoy: $SI ≪ $FN by ~4 h and $SI µs = all-zero — the classic Metasploit/Empire <code>timestomp</code> double-signature.</li>
+<li>The other three secret files (<code>NoJerry.txt</code>, <code>PortalGunPlans.txt</code>, <code>Szechuan Sauce.txt</code>) have matching $SI/$FN with non-zero sub-seconds → <b>not</b> stomped. The legit binary <code>coreupdater.exe</code> was also <b>not</b> stomped on either host ($SI = $FN), which is how we know the stomp was deliberate and targeted at the decoy.</li>
+</ul></details>
+</div>
+
+<h2>④ Extra Questions (not in the original CTF)</h2>
+<div class="card info">
+<div class="qa"><span class="q">Other artifacts revealing how evidence was collected?</span> — <span class="a">Yes — <code>FTK Imager.exe</code> (running from <code>E:\</code>) is visible in DC RAM (PID 2840), matching the client interview ("FTK Imager Lite + Redline Collector"). The 01:22 reboot + Security-log blackout is the acquisition/IR footprint, not attacker log-clearing (no 1102 event exists).</span></div>
+<div class="qa"><span class="q">How many times did the attacker log in?</span> — <span class="a">≥2 external RDP connections to the DC from 194.61.24.102 (initial 03:22:37Z + reconnect 03:56:04Z after a 03:52 disconnect), plus 1 lateral RDP DC→Desktop (03:36:25Z).</span></div>
+<div class="qa"><span class="q">Identify the outlier login without prior IOCs (frequency analysis)?</span> — <span class="a">Group RDP sessions by source: all historical sessions are internal (<code>WIN-E0PO207ERMD</code>, host-local). Exactly one source — <code>194.61.24.102</code> — is external and appears only on 2020-09-19; it's the lone outlier and the lead.</span></div>
+<div class="qa"><span class="q">What files did the attacker open (LNK artifacts)?</span> — <span class="a">From Administrator's Recent shortcuts: <code>Szechuan Sauce.txt</code>, <code>SECRET_beth.txt</code>, <code>Beth_Secret.txt</code>, and the <code>Secret</code> folder (03:32–03:35Z).</span></div>
+<div class="qa"><span class="q">Multiple sources of persistence within the malware?</span> — <span class="a">Yes — (1) auto-start service <code>coreupdater</code>, (2) HKLM Run-key Empire PowerShell stager <code>coreupdate</code>, (3) in-memory Meterpreter migrated into <code>spoolsv.exe</code> — all replicated on both hosts (≈4 footholds total).</span></div>
+</div>
+
+<h2>⑤ Indicators of Compromise (IOCs)</h2>
+<table>
+<tr><th>type</th><th>value</th><th>role</th></tr>
+<tr><td class="s">IP</td><td class="r">194.61.24.102</td><td>external RDP source (initial access)</td></tr>
+<tr><td class="s">IP:port</td><td class="r">203.78.103.109:443</td><td>Meterpreter C2 (both hosts)</td></tr>
+<tr><td class="s">file</td><td><code>C:\Windows\System32\coreupdater.exe</code></td><td>Meterpreter service binary (7168 B)</td></tr>
+<tr><td class="s">service</td><td><code>coreupdater</code> (auto, LocalSystem)</td><td>persistence #1</td></tr>
+<tr><td class="s">registry</td><td><code>HKLM\SOFTWARE\…\Run\coreupdate</code> → <code>HKLM\Software\9sEoCawv\45SVAG2o</code></td><td>Empire persistence #2</td></tr>
+<tr><td class="s">process</td><td>injected <code>spoolsv.exe</code> (RWX + MZ "MZARUH")</td><td>migrated Meterpreter</td></tr>
+</table>
+
+<details>
+<summary>▸ Methodology &amp; toolchain (for the curious / the next analyst)</summary>
+<ul>
+<li><b>Scope:</b> disk + RAM only, both hosts (Ultra-Violence tier). No PCAP / autoruns / protected-files — extracted hives, EVTX, $MFT, NTDS ourselves, as the exercise intends.</li>
+<li><b>Integrity:</b> all four evidence zips MD5-verified against the published hashes before processing.</li>
+<li><b>Disk:</b> <code>ewfmount</code> (E01→raw) → <code>mmls</code> → <code>ntfs-3g</code> ro mount → <code>fls</code>/<code>icat</code>/<code>istat</code> (Sleuth Kit); <code>analyzeMFT</code> for the $MFT timeline; manual $SI-vs-$FN comparison for timestomp.</li>
+<li><b>Memory:</b> volatility3 — <code>windows.info / pstree / psscan / netscan / cmdline / svcscan / malfind</code>.</li>
+<li><b>Registry:</b> <code>regipy</code> (timezone, services, Run keys, OS, decoded the Empire blob).</li>
+<li><b>Logs:</b> EVTX parsed via the <code>python-evtx</code> library (4624/4625, TerminalServices LSM 21/24, System 7045).</li>
+<li><b>Credentials:</b> impacket <code>secretsdump</code> (LOCAL: SAM + NTDS); cracked with pure-Python MD4 (impacket <code>compute_nthash</code>) over rockyou.</li>
+<li><b>Discipline:</b> every answer derived from artifacts; the published "answers"/walkthrough pages were deliberately <b>not</b> opened.</li>
+</ul>
+</details>
+
+<div class="card win">
+<b>Verdict:</b> a complete, evidence-backed reconstruction — internet-exposed RDP → Meterpreter + Empire → domain-wide credential theft → DC→Desktop lateral → recipe &amp; secret exfil → deletion, decoy, and timestomp to cover tracks, with the C2 still live at capture. All 13 core + 8 bonus + 5 extra questions answered, each traceable to a specific artifact.
+</div>
+
+<!-- ════════════ END CONTENT ════════════ -->
+
+</div><!-- /#scroller -->
+
+<div id="scrollnav">
+<button class="u" onclick="scn(0,-1)" title="up">▲</button>
+<button class="l" onclick="scn(-1,0)" title="left">◀</button>
+<button class="r" onclick="scn(1,0)" title="right">▶</button>
+<button class="d" onclick="scn(0,1)" title="down">▼</button>
+</div>
+<style>
+#scrollnav{position:fixed;right:12px;bottom:12px;display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);gap:5px;z-index:99999}
+#scrollnav .u{grid-area:1/2}#scrollnav .l{grid-area:2/1}#scrollnav .r{grid-area:2/3}#scrollnav .d{grid-area:3/2}
+#scrollnav button{width:46px;height:46px;border-radius:50%;border:1px solid #2f3b4d;background:rgba(28,35,48,.94);
+color:#e6edf3;font:18px/1 system-ui;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.55);-webkit-tap-highlight-color:transparent}
+#scrollnav button:active{background:#2f3b4d}
+@media(min-width:900px){#scrollnav{opacity:.55}#scrollnav:hover{opacity:1}}
+</style>
+<script>
+function scn(dx,dy){var s=document.getElementById('scroller')||document.scrollingElement||document.documentElement||document.body;
+var ax=(s.clientWidth||320)*0.8*dx, ay=(s.clientHeight||600)*0.82*dy;
+try{s.scrollBy({left:ax,top:ay,behavior:'smooth'});}catch(e){s.scrollLeft+=ax;s.scrollTop+=ay;}}
+</script>
+</body>
+</html>

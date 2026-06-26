@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stolen Szechuan Sauce — DFIR Case 001 — VERIFIED &amp; Corrected</title>
+<style>
+html,body{height:100%;margin:0;overflow:hidden}
+#scroller{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:28px 18px 92px}
+body{background:#0d1117;color:#e6edf3;font:14.5px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
+h1{font-size:1.45em;margin:.1em 0;color:#f0f6fc}
+h2{font-size:1.08em;margin:1.5em 0 .4em;color:#79c0ff;border-bottom:1px solid #21262d;padding-bottom:.3em}
+h3{font-size:.98em;margin:1em 0 .2em;color:#adbac7}
+.sub{color:#8b949e;margin:.2em 0 1em}
+.small{color:#8b949e;font-size:.84em}
+.big{font-size:1.25em;font-weight:700}
+.q{color:#f0f6fc;font-weight:700}
+.a{color:#7ee787}
+.stats{display:flex;flex-wrap:wrap;gap:10px;margin:1em 0}
+.stat{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:8px 14px;min-width:96px}
+.stat .n{font-size:1.4em;font-weight:700;color:#f0f6fc}.stat .k{color:#8b949e;font-size:.8em}
+table{border-collapse:collapse;margin:.6em 0;width:100%;font-size:.85em}
+th,td{border:1px solid #30363d;padding:5px 8px;text-align:left;vertical-align:top}
+th{background:#161b22;color:#79c0ff}
+td.g{color:#7ee787;font-weight:700}td.r{color:#f85149;font-weight:700}td.y{color:#e3b341;font-weight:700}td.s{color:#adbac7}
+td.m{color:#ff9bdc;font-weight:700}
+.card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 16px;margin:.7em 0}
+.win{border-left:4px solid #56d364}.fail{border-left:4px solid #f85149}.hard{border-left:4px solid #e3b341}.info{border-left:4px solid #79c0ff}
+code{background:#21262d;border-radius:4px;padding:1px 5px;font-size:.9em;word-break:break-word}
+ul{margin:.3em 0;padding-left:1.2em}li{margin:.3em 0}
+b.gg{color:#7ee787}b.rr{color:#f85149}b.yy{color:#e3b341}
+a{color:#79c0ff}
+details{background:#11161d;border:1px solid #30363d;border-radius:8px;padding:8px 14px;margin:.45em 0}
+summary{cursor:pointer;color:#79c0ff;font-weight:600}details[open] summary{margin-bottom:.5em}
+.qa{margin:.5em 0}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82em}
+/* ── MAGENTA correction layer (added in verification pass; not in the frozen original) ── */
+.corr{background:#1d121b;border:1px solid #5e2a4d;border-left:4px solid #ff7bd5;border-radius:8px;padding:9px 14px;margin:.45em 0 .9em}
+.corr .lbl{color:#ff7bd5;font-weight:700;letter-spacing:.02em}
+b.mm{color:#ff9bdc}
+/* .pill = GREEN "✓ match" chip (the common case). .pill-m = magenta legend chip only. */
+.pill{display:inline-block;background:#0f2417;border:1px solid #56d364;color:#7ee787;border-radius:10px;padding:0 8px;font-size:.78em;font-weight:700}
+.pill-m{display:inline-block;background:#3a1730;border:1px solid #ff7bd5;color:#ff9bdc;border-radius:10px;padding:0 8px;font-size:.78em;font-weight:700}
+.true{color:#ff9bdc;font-weight:700}
+/* ── CYAN layer = verification AFFIRMED me (I diverged from the key and was right / richer). Distinct from #79c0ff link-blue. ── */
+.affirm{background:#0b1d20;border:1px solid #1f5b61;border-left:4px solid #39d3e0;border-radius:8px;padding:9px 14px;margin:.45em 0 .9em}
+.affirm .lbl{color:#39d3e0;font-weight:700;letter-spacing:.02em}
+b.cc{color:#5be7f0}
+td.c{color:#5be7f0;font-weight:700}
+.pill-c{display:inline-block;background:#0e2a2d;border:1px solid #39d3e0;color:#5be7f0;border-radius:10px;padding:0 8px;font-size:.78em;font-weight:700}
+</style>
+</head>
+<body><div id="scroller">
+
+<!-- ════════════ CONTENT ════════════ -->
+
+<h1>🥡 The Stolen Szechuan Sauce — Case 001 · <span style="color:#79c0ff">Verified &amp; Corrected</span></h1>
+<p class="sub">2026-06-26 · my blind solve (disk+RAM only) now <b>checked against the official DFIR Madness answer key</b> + <b>2 independent subagents</b> + <b>Codex</b> (separate model lineage) · <span class="pill-m">magenta = I was wrong / missed</span> <span class="pill-c">cyan = verified right (diverged from key &amp; confirmed)</span> · the original blind render is frozen read-only as evidence (<code>…-FROZEN.html</code>, md5 <code class="mono">e1a289c7…</code>)</p>
+
+<details>
+<summary>▸ How to read this edition</summary>
+<ul>
+<li>Every original answer is <b>preserved verbatim</b> (green = what I concluded blind). Beneath it, a coloured block shows the verification result: <b class="mm">magenta = I was wrong / missed / imprecise</b> (fix it); <b class="cc">cyan = verification confirmed I was right</b> in a spot where my artifact evidence diverged from — or was richer than — the official key. One colour, one meaning.</li>
+<li><b>Headline result:</b> the attack narrative I reconstructed blind is <b class="gg">fully corroborated</b> by the official key. <b class="mm">Magenta defects:</b> one systematic +1h clock offset, one substantive miss (the exfil archives), one over-attribution ("Empire"), and a handful of refinements. <b class="cc">Cyan wins:</b> four spots where I diverged from the key and verification proved <i>me</i> right (Pacific/UTC−7, the <code>coreupdater.exe</code> spelling, mortysmith, the local-Admin password).</li>
+<li>Verification was adversarial on purpose: the checkers were told to distrust me and hunt for errors. Codex (GPT, different lineage) adjudicated the cases where my disk/RAM evidence diverges from the key.</li>
+</ul>
+</details>
+
+<div class="card win">
+<span class="big">Blind solve verdict: substantially correct.</span> Initial vector, both OSes, malware family, C2 IP, attacker IP, process-injection chain, persistence, network layout, lateral-movement mechanism, credential theft, Beth-secret recovery, and the timestomped file <b>all match the official key</b> — several with more precision than the key itself.
+</div>
+
+<div class="card corr">
+<span class="lbl">⏱ CORRECTION #1 — systematic clock offset (affects every timestamp I reported)</span>
+<p>I reported all times in <b>host-artifact UTC</b> and treated them as ground truth. They are <b class="mm">true&nbsp;UTC&nbsp;+&nbsp;1&nbsp;hour</b>. <b>Subtract 1&nbsp;hour</b> from every time in the original answers to get real-world (PCAP-authoritative) UTC. Confirmed independently by both subagents <i>and</i> Codex.</p>
+<p class="small"><b>Mechanism:</b> the VM was set to Pacific (UTC−7/PDT) but its wall-clock held Colorado/Mountain local time; Windows therefore added 7&nbsp;h instead of 6 when writing UTC into EVTX/$MFT/memory, so host artifacts read 1&nbsp;h late. The PCAP router (correctly UTC−6) is the authority. The key itself shows this: the lateral RDP is "<b>02:35:54 true</b> / 03:35:54 host-uncorrected." My event <b>ordering and relative timing are correct</b> — only the absolute clock was shifted. e.g. coreupdater drop <code>03:24:06Z</code> → <span class="true">02:24:06 true</span>; sauce access <code>03:32:21Z</code> → <span class="true">02:32:21 true</span>.</p>
+</div>
+
+<div class="stats">
+<div class="stat"><div class="n">~20</div><div class="k">answers validated</div></div>
+<div class="stat"><div class="n">+1h</div><div class="k">clock offset (all times)</div></div>
+<div class="stat"><div class="n">1</div><div class="k">substantive miss (zips)</div></div>
+<div class="stat"><div class="n">1</div><div class="k">over-attribution (Empire)</div></div>
+<div class="stat"><div class="n">5/5</div><div class="k">cracked pw exact-match</div></div>
+<div class="stat"><div class="n">4</div><div class="k">cyan: diverged &amp; right</div></div>
+<div class="stat"><div class="n">3</div><div class="k">checkers (2 agents+Codex)</div></div>
+</div>
+
+<h2>⚖️ Corrections at a glance</h2>
+<table>
+<tr><th>#</th><th>topic</th><th>what changed</th><th>type</th></tr>
+<tr><td class="s">1</td><td>All timestamps</td><td class="m">−1h to get true UTC (host clock ran +1h)</td><td class="m">systematic error</td></tr>
+<tr><td class="s">2</td><td>Exfil data (Q8/Q12)</td><td class="m">Missed <code>secret.zip</code> (DC, exfil ~02:31 true) &amp; <code>loot.zip</code> (Desktop, ~02:48) — created via GUI, exfiltrated via meterpreter, deleted</td><td class="m">substantive miss</td></tr>
+<tr><td class="s">3</td><td>Malware ID (Q6)</td><td class="m">"PowerShell Empire" over-claimed (~35% conf); it's Empire-<i>like</i> registry PowerShell, equally consistent with Metasploit's own persistence</td><td class="m">over-attribution</td></tr>
+<tr><td class="s">4</td><td>Initial vector (Q5)</td><td class="m">Brute-force is <b>confirmed</b> (Hydra), not just inferred; missed the 02:19 NMAP 3389 recon probe</td><td class="m">under-claim + miss</td></tr>
+<tr><td class="s">5</td><td>Payload delivery (Q6.ii)</td><td class="m">Delivered via <b>IE over HTTP</b> from 194.61.24.102; drop my "2nd stage from C2 203.x" clause (203 is C2 only)</td><td class="m">imprecision</td></tr>
+<tr><td class="s">6</td><td>"Moved" (Q6.viii)</td><td class="m">Key means local move <code>Downloads → System32</code>, not my cross-host reading</td><td class="m">misinterpretation</td></tr>
+<tr><td class="s">7</td><td>Service install time (Q6)</td><td class="m">DC service installed <b>02:27:49 true</b> — I couldn't time it (gapped Security log)</td><td class="m">miss</td></tr>
+<tr><td class="s">8</td><td>Threat intel (Q7)</td><td class="m">194.61.24.102 = known RDP brute-forcer; 203.78.103.109 briefly tied to <code>happydoghappycat-th.com</code>/APT (later retracted)</td><td class="m">now sourced</td></tr>
+<tr><td class="s">9</td><td>Passwords (B6)</td><td class="m">+ ricksanchez <code>800PortalsForMe%</code>, summersmith <code>34MarvelBootySalmon$$</code> (not in rockyou)</td><td class="m">completion</td></tr>
+<tr><td class="s">—</td><td>Q3 / filename / B5 / local-pw</td><td class="c">NOT errors — verification confirmed my artifact evidence is right / richer than the key (see inline, in cyan)</td><td class="c">verified right</td></tr>
+</table>
+
+<h2>① Core Questions (1–13) — original answers + corrections</h2>
+
+<div class="card hard">
+<b class="yy">⏱ Clock provenance (original note — correct as far as it went).</b> Host TZ = Pacific (UTC−7 active); org is Colorado (UTC−6). All host timestamps stored in UTC.
+<div class="corr"><span class="lbl">▸ refine</span> What I under-stated: the misconfig didn't just mislabel the zone, it shifted the <b>absolute UTC</b> by <b class="mm">+1h</b> vs the PCAP. Treat every host time as <span class="true">−1h</span> for reality. (See Correction #1.)</div>
+</div>
+
+<div class="card info">
+<div class="qa"><span class="q">1. OS of the Server?</span> — <span class="a">Windows Server 2012 R2 Standard (Eval), build 9600; DC <code>CITADEL-DC01</code>, domain <code>C137.local</code>.</span> <span class="pill">✓ match (richer than key's "Windows 2012")</span></div>
+
+<div class="qa"><span class="q">2. OS of the Desktop?</span> — <span class="a">Windows 10 Enterprise (Eval), build 19041; <code>DESKTOP-SDN1RPT</code>.</span> <span class="pill">✓ match</span></div>
+
+<div class="qa"><span class="q">3. Local time of the Server?</span> — <span class="a">Pacific Standard Time, active UTC−7 (PDT).</span></div>
+<div class="affirm"><span class="lbl">▸ verified right — my artifact answer stands</span> The key's headline answer says "Mountain UTC−6", but the <b>registry artifact</b> says Pacific/UTC−7 (and the key's own author confirms in the comments it's a "bad admin" misconfig). So: <b class="cc">the machine was configured to Pacific/UTC−7</b> (my answer, forensically correct); UTC−6 is merely the zone it <i>should</i> have been. This very misconfig is what causes Correction&nbsp;#1.</div>
+
+<div class="qa"><span class="q">4. Was there a breach?</span> — <span class="a">Yes.</span> <span class="pill">✓ match</span></div>
+
+<div class="qa"><span class="q">5. Initial entry vector?</span> — <span class="a">External RDP; logon as <code>C137\Administrator</code> from <code>194.61.24.102</code> @ 03:22:37Z; brute-force <i>inferred</i> (Security log blacked out before the window).</span></div>
+<div class="corr"><span class="lbl">▸ correction — upgrade to confirmed + a miss</span> Per the key, brute-force is <b class="mm">confirmed</b>: tool was <b>Hydra</b>, and it was preceded by an <b class="mm">NMAP probe of TCP 3389 at 02:19 true</b> (which I missed — it's only in the PCAP I didn't have). Logon true time → <span class="true">02:22:37</span>. My RDP-from-194.61.24.102 finding (from the surviving TS log) was right; I just over-hedged on "inferred" because my host Security log was gapped.</div>
+</div>
+
+<div class="card info">
+<div class="qa"><span class="q">6. Malware?</span> — <span class="a">Yes — <code>coreupdater.exe</code> (Meterpreter) injected into <code>spoolsv.exe</code>; + a registry PowerShell stager I labelled "Empire".</span></div>
+<table>
+<tr><th>sub-q</th><th>my answer</th><th>verdict</th></tr>
+<tr><td class="s">i. process</td><td>coreupdater + injected spoolsv (PIDs given)</td><td class="g">✓ exact match (coreupdater→spoolsv migration)</td></tr>
+<tr><td class="s">ii. delivery IP</td><td>194.61.24.102 (+ "2nd stage from C2 203.x")</td><td class="m">IP ✓; mechanism = IE/HTTP download; drop the "2nd-stage from 203" clause</td></tr>
+<tr><td class="s">iii. C2</td><td>203.78.103.109:443</td><td class="g">✓ exact</td></tr>
+<tr><td class="s">iv. on disk</td><td><code>C:\Windows\System32\coreupdater.exe</code></td><td class="c">✓ verified right — key's "coreupdate.exe" is a key typo; mine confirmed in $MFT+registry+RAM</td></tr>
+<tr><td class="s">v. first appeared</td><td>DC 03:24:06–12Z; Desktop 03:40:00Z</td><td class="m">✓ sequence; true = 02:24:06 / 02:40 (−1h)</td></tr>
+<tr><td class="s">vi. capabilities</td><td>full Meterpreter <b class="mm">(+Empire)</b></td><td class="m">Meterpreter ✓; the "+Empire" tag is the over-claim (see correction below)</td></tr>
+<tr><td class="s">vii. easily obtained</td><td>Yes (free/open-source)</td><td class="g">✓</td></tr>
+<tr><td class="s">viii. moved?</td><td>"redeployed DC→Desktop"</td><td class="m">wrong axis — see below</td></tr>
+<tr><td class="s">ix. persistence</td><td>service + Run-key, both hosts</td><td class="g">✓ exact ("both registry and service")</td></tr>
+</table>
+<div class="corr"><span class="lbl">▸ correction — Empire over-attribution</span> I called the Run-key PowerShell stager <b>PowerShell Empire</b>. Codex (independent) rates that <b class="mm">~35% confidence</b>: a base64+gzip+IEX Run-key launcher is <i>Empire-like</i> but <b>not uniquely diagnostic</b> — Metasploit's own PowerShell/registry persistence produces the same shape, and the official key attributes everything to <b>Metasploit/meterpreter only</b>. Correct framing: "<b class="mm">registry-resident base64/gzip/IEX PowerShell persistence (Empire-style; attribution unconfirmed)</b>." The service + Run-key dual persistence is real either way.</div>
+<div class="corr"><span class="lbl">▸ correction — "moved" (viii)</span> The key's "moved" = the binary was relocated <b class="mm">from the Administrator's <code>Downloads</code> folder to <code>C:\Windows\System32\</code></b> on disk. I answered a different fact (cross-host deployment). Both happened, but the intended answer is the local Downloads→System32 move.</div>
+<div class="corr"><span class="lbl">▸ correction — payload delivery (ii) &amp; service-install time</span> The binary arrived via <b class="mm">Internet Explorer over HTTP from 194.61.24.102</b> (not "pulled from the C2"); 203.78.103.109 is C2 only. The DC service was installed at <b class="mm">02:27:49 true</b> — I couldn't timestamp it because the host Security log was gapped.</div>
+</div>
+
+<div class="card fail">
+<div class="qa"><span class="q">7. Malicious IPs?</span> — <span class="a">194.61.24.102 (RDP attacker) + 203.78.103.109:443 (C2). TI attribution deferred (declined to fabricate).</span> <span class="pill">✓ IPs exact</span></div>
+<div class="corr"><span class="lbl">▸ now sourced (I correctly didn't guess; the key supplies it)</span> <b class="mm">194.61.24.102</b> was being <b>tracked as hostile prior to the incident — specifically for RDP brute-force</b>. <b class="mm">203.78.103.109</b> was briefly attached to <code>happydoghappycat-th.com</code> and an <b>alleged APT</b>, but that was <b>later reported as not involved</b>. So Q7.i/ii = "yes, known adversary infra, seen in other attacks" — with the APT caveat.</div>
+</div>
+
+<div class="card info">
+<div class="qa"><span class="q">8. Other systems accessed? How/when/data?</span> — <span class="a">Desktop (10.42.85.115) via RDP <b>from the DC</b> (10.42.85.10) as <code>C137\Administrator</code> @ 03:36:25Z; data = NTDS credential dump + secret files. (Noted no exfil zips persisted on disk.)</span></div>
+<div class="corr"><span class="lbl">▸ correction — the exfil archives (my biggest miss) + time</span> True lateral-move time → <span class="true">02:35:54</span> (−1h). And the actual "what was stolen" answer is two staged archives I <b class="mm">missed</b>: <b class="mm"><code>secret.zip</code></b> built on the DC via the GUI and exfiltrated ~<span class="true">02:31 true</span>, and <b class="mm"><code>loot.zip</code></b> on the Desktop, exfiltrated ~<span class="true">02:48 true</span> — both then <b>deleted</b> via meterpreter. My "no zip on disk" was literally true (they were deleted) but I missed that they existed and were the exfil vehicle; they'd be recoverable from the USN journal / <code>$LogFile</code> / memory — a gap in my pass. (The credential + secret-file theft I did find still stands.)</div>
+
+<div class="qa"><span class="q">9. Network layout?</span> — <span class="a">C137 / C137.local, 10.42.85.0/24; DC .10, Desktop .115; ext attacker 194.61.24.102; C2 203.78.103.109.</span> <span class="pill">✓ match (richer)</span></div>
+
+<div class="qa"><span class="q">10. Architecture changes?</span> — <span class="a">RDP off the internet (VPN+MFA/RD-Gateway), segment DC, EDR, egress filtering, central SIEM.</span> <span class="pill">✓ match (richer)</span></div>
+
+<div class="qa"><span class="q">11. Steal the sauce? Time?</span> — <span class="a"><code>Szechuan Sauce.txt</code> opened @ 03:32:21Z.</span> <span class="pill">✓ exact event</span></div>
+<div class="corr"><span class="lbl">▸ time</span> True time → <span class="true">02:32:21</span> (key: "accessed 02:32:21"; "stolen approx 0230"). Event and second-precision matched exactly; only the +1h applies.</div>
+
+<div class="qa"><span class="q">12. Other sensitive files? Times?</span> — <span class="a"><code>SECRET_beth.txt</code> opened 03:32:13Z, deleted 03:34:27Z; PortalGunPlans.txt; NoJerry.txt; full NTDS.</span></div>
+<div class="corr"><span class="lbl">▸ time + the zips again</span> True → opened <span class="true">02:32:13</span>, deleted <span class="true">02:34:27</span> (key: "Beth's secrets manipulated ~0234"). Key also notes "Morty's thoughts stolen ~0234" = the <code>loot</code> material. Reiterate the missed <b class="mm">secret.zip / loot.zip</b> exfil vehicles from Correction #2.</div>
+
+<div class="qa"><span class="q">13. Last known contact?</span> — <span class="a">C2 still ESTABLISHED at acquisition (DC 04:39:59Z / Desktop 05:10:39Z); RDP last reconnect 03:56:04Z; attacker still interactive.</span> <span class="pill">✓ conclusion matches</span></div>
+<div class="corr"><span class="lbl">▸ time</span> True → captures <span class="true">03:39:59</span> (DC) / <span class="true">04:10:39</span> (Desktop); last reconnect <span class="true">02:56:04</span> (key: "last interactive logoff ~0300 UTC; still interacting at capture"). Conclusion was correct.</div>
+</div>
+
+<h2>② Attack timeline — host UTC (as I reported) → <span class="true">true UTC (−1h)</span></h2>
+<table>
+<tr><th>host UTC</th><th class="m">true UTC</th><th>event</th></tr>
+<tr><td class="s">—</td><td class="m">02:19</td><td class="m">NMAP probe TCP 3389 from 194.61.24.102 (I missed — PCAP-only)</td></tr>
+<tr><td class="s">03:22:37</td><td class="m">02:21–02:22</td><td>Hydra RDP brute-force → Administrator logon from 194.61.24.102</td></tr>
+<tr><td class="s">03:24:06–12</td><td class="m">02:24:06</td><td>coreupdater.exe delivered (IE/HTTP) &amp; dropped on DC</td></tr>
+<tr><td class="s">—</td><td class="m">02:27:49</td><td class="m">coreupdater installed as AutoStart service on DC (I missed the time — gapped log)</td></tr>
+<tr><td class="s">—</td><td class="m">~02:30 / ~02:31</td><td class="m">secret.zip built (GUI) &amp; exfiltrated, then deleted (I missed)</td></tr>
+<tr><td class="s">03:32:21</td><td class="m">02:32:21</td><td>Szechuan Sauce.txt accessed</td></tr>
+<tr><td class="s">03:34:27</td><td class="m">02:34</td><td>SECRET_beth.txt deleted; decoy Beth_Secret.txt created</td></tr>
+<tr><td class="s">~03:38</td><td class="m">~02:38</td><td>Beth_Secret.txt timestomped (to match PortalGunPlans.txt)</td></tr>
+<tr><td class="s">03:36:25</td><td class="m">02:35:54</td><td>lateral RDP DC→Desktop as Administrator (from 10.42.85.10)</td></tr>
+<tr><td class="s">03:40:00</td><td class="m">02:40</td><td>coreupdater dropped on Desktop; @02:41 persistence (svc+registry)</td></tr>
+<tr><td class="s">—</td><td class="m">~02:46 / ~02:48</td><td class="m">loot.zip built (GUI) &amp; exfiltrated, then deleted (I missed)</td></tr>
+<tr><td class="s">03:56:04</td><td class="m">02:56</td><td>attacker RDP reconnect; meterpreter restarted &amp; migrated</td></tr>
+<tr><td class="s">04:39:59 / 05:10:39</td><td class="m">03:39:59 / 04:10:39</td><td>DC then Desktop RAM acquired — C2 still ESTABLISHED</td></tr>
+</table>
+
+<h2>③ Bonus (B1–B8)</h2>
+<div class="card info">
+<div class="qa"><span class="q">B1–B3 (controls/architecture/policy)</span> — <span class="a">No internet RDP, MFA, segmentation, strong passwords, central logging, EDR, egress filtering.</span> <span class="pill">✓ aligns (VPN/IPS/firewall/password-complexity/EDR)</span></div>
+<div class="qa"><span class="q">B4. Users on the DC?</span> — <span class="a">Administrator (interactive) + network logons from .115 (ricksanchez, mortysmith, Administrator).</span> <span class="pill">✓ (key: "Administrator")</span></div>
+<div class="qa"><span class="q">B5. Users on the Desktop?</span> — <span class="a">local Admin, ricksanchez, mortysmith (+ defaultuser0 build).</span></div>
+<div class="affirm"><span class="lbl">▸ verified right — my evidence is richer, not wrong</span> Key lists "Administrator and Rick Sanchez". My disk shows a <b class="cc">mortysmith profile folder AND mortysmith type-2 logon events</b>, so including him is evidence-backed (Codex agreed: key is terse/incomplete). Keeping mortysmith.</div>
+</div>
+
+<div class="card win">
+<div class="qa"><span class="q">B6. Domain passwords?</span> — <span class="a">Cracked 6/9 from <code>ntds.dit</code>; all matched the key exactly:</span></div>
+<table>
+<tr><th>account</th><th>my result</th><th>key</th></tr>
+<tr><td class="s">Administrator</td><td class="g">)&amp;Denver89</td><td class="g">✓</td></tr>
+<tr><td class="s">jerrysmith</td><td class="g">!BETHEYBOO12!</td><td class="g">✓</td></tr>
+<tr><td class="s">mortysmith</td><td class="g">Jessica@1</td><td class="g">✓</td></tr>
+<tr><td class="s">bethsmith</td><td class="g">RedWine1!</td><td class="g">✓</td></tr>
+<tr><td class="s">birdman</td><td class="g">(dimension5150)</td><td class="g">✓</td></tr>
+<tr><td class="s">ricksanchez</td><td class="y">not in rockyou</td><td class="m">800PortalsForMe%</td></tr>
+<tr><td class="s">summersmith</td><td class="y">not in rockyou</td><td class="m">34MarvelBootySalmon$$</td></tr>
+<tr><td class="s">local Administrator</td><td class="g">P@$$w0rd</td><td class="c">✓ verified-right extra — not in key, recovered from local SAM</td></tr>
+</table>
+<div class="corr"><span class="lbl">▸ completion</span> The two I couldn't crack are complex (not in rockyou) — supplied by the key: <b class="mm">ricksanchez = 800PortalsForMe%</b>, <b class="mm">summersmith = 34MarvelBootySalmon$$</b>. A rules/mask attack would have gotten them. All 5 (+local) I did crack are exact.</div>
+</div>
+
+<div class="card win">
+<div class="qa"><span class="q">B7. Recover Beth's secret — name &amp; contents?</span> — <span class="a">Original <code>SECRET_beth.txt</code> = "Earth beth is the real beth." (recovered from Recycle Bin); decoy <code>Beth_Secret.txt</code> = "Space Beth is the real Beth".</span> <span class="pill">✓ match</span></div>
+<div class="corr"><span class="lbl">▸ casing nit</span> Key spells it <b class="mm"><code>Secret_Beth.txt</code></b> and "Earth <b>B</b>eth is the real <b>B</b>eth." — substance identical; capitalisation differs.</div>
+
+<div class="qa"><span class="q">B8. Timestomped file?</span> — <span class="a"><code>Beth_Secret.txt</code> (the decoy); <code>$SI</code> backdated + sub-seconds zeroed vs real <code>$FN</code>.</span> <span class="pill">✓ exact</span></div>
+<div class="corr"><span class="lbl">▸ corroboration</span> Key adds the tell I observed but didn't name: it was stomped <b class="mm">to match <code>PortalGunPlans.txt</code></b>'s timestamp (both share the <code>:33:54</code> second — confirms it).</div>
+</div>
+
+<h2>④ Extra Questions</h2>
+<div class="card info">
+<ul>
+<li><b>Evidence-collection artifacts</b> — <code>FTK Imager.exe</code> visible in DC RAM = the <b>responder's</b> acquisition tool (correctly labelled, not adversary tooling). <span class="pill">✓</span></li>
+<li><b>How many logins</b> — ≥2 external RDP to the DC (initial + reconnect) + 1 lateral to Desktop. <span class="pill">✓ (key: "logged in a second time, restarted/migrated meterpreter")</span></li>
+<li><b>Outlier via frequency analysis</b> — sole external RDP source <code>194.61.24.102</code> among otherwise-internal logons. <span class="pill">✓</span></li>
+<li><b>LNK files opened</b> — Szechuan Sauce / SECRET_beth / Beth_Secret / Secret. <span class="pill">✓</span></li>
+<li><b>Multiple persistence</b> — service + registry PowerShell + in-memory spoolsv injection.
+<div class="corr"><span class="lbl">▸ see Empire correction</span> "Multiple persistence (service + registry + in-memory)" is sound; just don't brand the registry one specifically as <b class="mm">Empire</b> without payload-format proof.</div></li>
+</ul>
+</div>
+
+<h2>⑤ IOCs (with verified threat-intel)</h2>
+<table>
+<tr><th>type</th><th>value</th><th>role / intel</th></tr>
+<tr><td class="s">IP</td><td class="r">194.61.24.102</td><td>RDP brute-force source (Hydra); <b class="mm">tracked hostile pre-incident</b></td></tr>
+<tr><td class="s">IP:port</td><td class="r">203.78.103.109:443</td><td>Meterpreter C2 (both hosts); <b class="mm">briefly linked to happydoghappycat-th.com/APT, later retracted</b></td></tr>
+<tr><td class="s">file</td><td><code>C:\Windows\System32\coreupdater.exe</code></td><td>Meterpreter service binary (7168 B); moved from <code>…\Administrator\Downloads</code></td></tr>
+<tr><td class="s">service</td><td><code>coreupdater</code> (auto, LocalSystem)</td><td>persistence — installed DC 02:27:49 true</td></tr>
+<tr><td class="s">registry</td><td><code>HKLM\…\Run\coreupdate</code> → <code>HKLM\Software\9sEoCawv\45SVAG2o</code></td><td>PowerShell stager persistence (Empire-style, unconfirmed)</td></tr>
+<tr><td class="s">archives</td><td class="m"><code>secret.zip</code> (DC) · <code>loot.zip</code> (Desktop)</td><td class="m">exfil vehicles — created via GUI, exfiltrated, deleted</td></tr>
+</table>
+
+<details>
+<summary>▸ Verification methodology (how this edition was checked)</summary>
+<ul>
+<li><b>Source of truth:</b> the official DFIR Madness answer key (fetched via the real browser once the blind solve was frozen). The key is explicitly a "functional / not-final" draft and is itself imprecise in places (e.g. the <code>coreupdate.exe</code> typo, the Pacific-vs-Mountain headline).</li>
+<li><b>Checker 1 &amp; 2 (subagents):</b> split Q1–Q7 and Q8–B8; each told to distrust the analyst and emit a discrepancy table.</li>
+<li><b>Checker 3 (Codex, GPT lineage):</b> adjudicated the clock-skew math (sign/direction), and classified each divergence as analyst-wrong vs key-incomplete — the cross-lineage check that a second Claude couldn't provide. It also down-graded the "Empire" attribution.</li>
+<li><b>Convergence:</b> all three independently confirmed the +1h offset and the exfil-zip miss; all three agreed Q3/filename/B5/local-pw are cases where the host-artifact evidence is <i>more</i> complete than the key, not errors.</li>
+<li><b>Discipline preserved:</b> the original blind solve never consulted any answer/walkthrough; this edition annotates it after the fact. The frozen original is read-only.</li>
+</ul>
+</details>
+
+<div class="card win">
+<b>Final verdict:</b> the blind reconstruction was <b class="gg">correct on every load-bearing fact</b> — vector, malware, C2, injection, persistence, lateral movement, credentials, data targets, recovery, and timestomp — and frequently more precise than the key. The honest defects: a <b class="mm">uniform +1h clock offset</b> (must subtract an hour), a <b class="mm">missed pair of exfil archives</b> (secret.zip / loot.zip, deleted post-exfil), and an <b class="mm">over-confident "Empire" label</b>. Net: a high-fidelity solve from disk + RAM alone, with its own errors now mapped in magenta.
+</div>
+
+<!-- ════════════ END CONTENT ════════════ -->
+
+</div><!-- /#scroller -->
+
+<div id="scrollnav">
+<button class="u" onclick="scn(0,-1)" title="up">▲</button>
+<button class="l" onclick="scn(-1,0)" title="left">◀</button>
+<button class="r" onclick="scn(1,0)" title="right">▶</button>
+<button class="d" onclick="scn(0,1)" title="down">▼</button>
+</div>
+<style>
+#scrollnav{position:fixed;right:12px;bottom:12px;display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);gap:5px;z-index:99999}
+#scrollnav .u{grid-area:1/2}#scrollnav .l{grid-area:2/1}#scrollnav .r{grid-area:2/3}#scrollnav .d{grid-area:3/2}
+#scrollnav button{width:46px;height:46px;border-radius:50%;border:1px solid #2f3b4d;background:rgba(28,35,48,.94);
+color:#e6edf3;font:18px/1 system-ui;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.55);-webkit-tap-highlight-color:transparent}
+#scrollnav button:active{background:#2f3b4d}
+@media(min-width:900px){#scrollnav{opacity:.55}#scrollnav:hover{opacity:1}}
+</style>
+<script>
+function scn(dx,dy){var s=document.getElementById('scroller')||document.scrollingElement||document.documentElement||document.body;
+var ax=(s.clientWidth||320)*0.8*dx, ay=(s.clientHeight||600)*0.82*dy;
+try{s.scrollBy({left:ax,top:ay,behavior:'smooth'});}catch(e){s.scrollLeft+=ax;s.scrollTop+=ay;}}
+</script>
+</body>
+</html>
