@@ -139,7 +139,7 @@ The evidence is public (the referer trick is in Act 1). The toolchain is `apt in
 
 Named honestly, per 拋磚引玉:
 
-- **No `issen` cross-check yet.** The workshop ships a Rust DFIR tool (`issen`); the original brief was to use it. The agent solved with the standard FOSS stack instead and never ran `issen` as the independent second-toolchain corroboration. That's the most obvious missing act.
+- **No independent second-toolchain cross-check yet.** A different forensic toolchain run over the same evidence would corroborate (or challenge) every finding for free.
 - **No screenshots / asciinema.** dmr39 earns half its punch from photos of the wiring mess. This repo has none yet — the two HTML renders carry the visual weight, which isn't the same.
 - **Command transcript not included.** The narrative asserts the commands; it doesn't yet show them. A `transcript/` with the actual `vol3` / `istat` / `secretsdump` invocations + outputs would let a reader follow along.
 - **The +1 h reconciliation deserves a diagram.** It's the subtlest part and currently lives in prose.
@@ -150,3 +150,7 @@ PRs, issues, and "this Act drags" notes welcome. That's the point of throwing th
 ---
 
 *Investigation by an AI agent (Claude Code) over SSH against a homelab node. Evidence © DFIR Madness (James Smith), used for training. Question set by Albert Hui & Josiah Wu. The agent solved it blind, then graded itself — and kept the mistakes in.*
+
+---
+
+Agents handle what a purpose-built tool like `issen` was made to do — only that agents were never *taught* like this. So imagine the agent as a **`UNIVERSAL.exe`**, and let your dream go wild.
