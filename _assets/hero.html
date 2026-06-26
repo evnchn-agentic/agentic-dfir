@@ -1,0 +1,61 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{margin:0;box-sizing:border-box}
+body{width:1200px;height:630px;overflow:hidden;background:
+  radial-gradient(900px 500px at 18% 30%, rgba(57,211,224,.10), transparent 60%),
+  radial-gradient(700px 500px at 95% 90%, rgba(121,192,255,.10), transparent 60%),
+  #0b0f14;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;color:#e6edf3;position:relative}
+.hex{position:absolute;color:#1b2b33;font:12px ui-monospace,monospace;opacity:.5;white-space:pre;letter-spacing:2px}
+.wrap{position:absolute;inset:0;display:flex;align-items:center;padding:0 64px;gap:48px}
+.left{flex:1}
+.kicker{color:#39d3e0;font:700 16px ui-monospace,monospace;letter-spacing:3px;text-transform:uppercase}
+h1{font-size:62px;line-height:1.02;margin:14px 0 0;color:#f0f6fc;letter-spacing:-1px}
+h1 .b{color:#39d3e0}
+.tag{font-size:25px;color:#adbac7;margin-top:20px;line-height:1.35;font-weight:600}
+.tag .hot{color:#f0f6fc}
+.sub{margin-top:22px;color:#8b949e;font:15px ui-monospace,monospace}
+.sub b{color:#7ee787}
+/* phone */
+.phone{width:300px;height:520px;border-radius:42px;background:#05070a;border:10px solid #1c2530;
+  box-shadow:0 24px 70px rgba(0,0,0,.6),0 0 0 2px #2a3340, 0 0 60px rgba(57,211,224,.12);position:relative;flex:none}
+.notch{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:96px;height:20px;background:#05070a;border-radius:12px;z-index:2}
+.screen{position:absolute;inset:14px;border-radius:30px;background:#0a0e13;overflow:hidden;padding:30px 16px 16px;font:11.5px/1.7 ui-monospace,monospace}
+.screen .p{color:#7ee787}.screen .c{color:#79c0ff}.screen .d{color:#6b7785}.screen .h{color:#f85149;font-weight:700}.screen .m{color:#ff9bdc}
+.glow{position:absolute;bottom:-1px;left:0;right:0;height:120px;background:linear-gradient(transparent,rgba(57,211,224,.05))}
+</style></head><body>
+<div class="hex" style="top:40px;left:40px">4d 5a 41 52 55 48 89 e5
+03 24 06  spoolsv  iex
+203.78.103.109:443</div>
+<div class="hex" style="bottom:36px;right:40px;text-align:right">$SI  !=  $FN
+UsnJrnl:$J
+coreupdater.exe</div>
+<div class="wrap">
+  <div class="left">
+    <div class="kicker">Agentic DFIR · Case 001</div>
+    <h1>The Stolen<br>Szechuan Sauce,<br><span class="b">solved blind.</span></h1>
+    <div class="tag">A computer-forensics workshop.<br><span class="hot">No computer.</span> One iPhone.</div>
+    <div class="sub">12.8&nbsp;GB · 2 Windows hosts · disk + RAM · <b>0 walkthroughs</b><br>solved over SSH from a phone — then it graded itself.</div>
+  </div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen">
+      <div><span class="p">$</span> <span class="c">vol</span> -f citadeldc01.mem netscan</div>
+      <div class="d">scanning…</div>
+      <div>10.42.85.10 → <span class="h">203.78.103.109:443</span></div>
+      <div class="h">  ESTABLISHED · coreupdater</div>
+      <div class="d">&nbsp;</div>
+      <div><span class="p">$</span> <span class="c">vol</span> malfind spoolsv.exe</div>
+      <div><span class="h">4d 5a 41 52 55 48</span> <span class="m">MZARUH</span></div>
+      <div class="d">↳ meterpreter injected</div>
+      <div class="d">&nbsp;</div>
+      <div><span class="p">$</span> <span class="c">istat</span> Beth_Secret.txt</div>
+      <div>$SI <span class="h">07:33:54.000</span></div>
+      <div>$FN <span class="p">11:34:56.970</span></div>
+      <div class="m">↳ timestomped decoy</div>
+      <div class="d">&nbsp;</div>
+      <div class="p">► case reconstructed.</div>
+    </div>
+    <div class="glow"></div>
+  </div>
+</div>
+</body></html>

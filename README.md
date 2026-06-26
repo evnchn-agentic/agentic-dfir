@@ -2,6 +2,8 @@
 
 **An AI agent works a full incident-response case end-to-end — two dead Windows machines, 12.8 GB of disk and memory — never reading the answer key, then grades its own homework against the official solution and three reviewers. The catch: the whole thing was driven from an iPhone, because the operator turned up to a computer-forensics workshop without a computer.**
 
+![Agentic DFIR — the Stolen Szechuan Sauce, solved blind from a phone](images/hero.png)
+
 > Built entirely through agentic coding with [Claude Code](https://claude.com/claude-code). The case is [DFIR Madness Case 001 — "The Stolen Szechuan Sauce"](https://dfirmadness.com/the-stolen-szechuan-sauce/) by James Smith; the question set is the BSidesHK workshop edition by Albert Hui & Josiah Wu. **The agent was told once: "Try and agentically solve it. Never peek at the answer."** It didn't. **Final tally: 26 questions worked blind, 0 walkthroughs read, 3 honest mistakes kept in.** Investigation by agent; evidence by DFIR Madness; ground truth by the published answer key — consulted only *after* the solve was frozen.
 
 *(This is a 拋磚引玉 brick — a fast first pass shipped to attract refinement. The forensics are verified; the prose is draft-grade. Rough edges are named at the [bottom](#-brick-edges-where-the-jade-comes-in).)*
@@ -50,6 +52,9 @@ So the session opened not with forensics but with a workaround: *"set up a web s
 
 No upload server ever got built. From here on, every forensic command ran on a homelab node over SSH — and the entire human side of it happened on a **phone screen, over [Claude Code](https://claude.com/claude-code) remote control.** A computer-forensics exam, answered without a computer in the room.
 
+![The question set, on paper, photographed at the workshop](images/the-brief-on-paper.jpg)
+*What you actually get: 26 questions on paper. No tidy artifact bundle, no answer key — and, that morning, no laptop.*
+
 So the scope: two hosts on domain **C137** (yes, Rick & Morty) — a Server 2012 R2 **Domain Controller** and a Windows 10 **Enterprise** workstation — as a disk image (`.E01`) and a raw memory dump each. ~12.8 GB. No PCAP, no pre-extracted artifacts. The workshop's whole point: *work from what you actually get, not a tidy bundle.*
 
 ### Act 1 — Getting the bytes (the agent vs. a 403)
@@ -71,6 +76,9 @@ No GUI, no workstation, no licensed tooling — just `apt install` and `pip inst
 - **`netscan`** → one connection to a non-RFC1918 address: `10.42.85.10:62613 → 203.78.103.109:443 ESTABLISHED`, owned by a process called **`coreupdater.exe`**. The only foreign IP in 19,000 lines of socket scan.
 - **`malfind`** → `spoolsv.exe` carrying `PAGE_EXECUTE_READWRITE` regions with `MZ` headers, one beginning `4D 5A 41 52 55 48 89 E5` — `MZARUH…`, the **Meterpreter x64 reflective-loader stub**. coreupdater had migrated into the print spooler.
 - **`pstree`** → coreupdater ran in **Session 2** (an RDP session) for 15 seconds and exited; an `FTK Imager.exe` running off `E:\` was the *responder's* own acquisition tool, caught in the act.
+
+![volatility3 netscan showing the C2 connection and the malfind MZARUH meterpreter stub](images/c2-money-shot.png)
+*The one non-local IP in ~19,000 lines of socket scan — the C2 — and the `MZARUH` reflective-loader stub inside `spoolsv.exe`. Real output, on a phone over SSH.*
 
 ### Act 4 — The disk, the registry, and a clock that lies
 
@@ -108,6 +116,9 @@ And three honest failures, kept in the writeup the way dmr39 keeps its 27 dead-e
 2. **A missed pair of exfil archives.** The agent searched the *live* filesystem for `secret.zip` / `loot.zip`, found none, and concluded "no exfil." But they were created, exfiltrated, and **deleted** — so they were never going to be in the live tree. (Post-hoc, the agent proved the fix: the **USN journal** `$Extend\$UsnJrnl:$J` still held a `Secret.zip` record, with the Windows-GUI temp `~RF*.TMP` beside it. The artifact was reachable the whole time; the agent just never parsed the journal.)
 3. **An over-confident "Empire" label.** A base64+gzip+`IEX` Run-key *looks* like PowerShell Empire, but that shape is shared by msfvenom, Cobalt Strike, and generic loaders. Codex put the attribution at ~35%. The honest answer was "registry-resident PowerShell stager, framework unattributed."
 
+![The verified, colour-coded reckoning dashboard — green right, magenta wrong, cyan diverged-and-right](images/the-reckoning.png)
+*Grading its own homework against the official key + two subagents + Codex.*
+
 The corrections live in [`renders/02-verified-corrected.html`](renders/02-verified-corrected.html), colour-coded so 🟣 *I was wrong* never wears the same colour as 🔵 *I diverged from the key and was proven right* (four times — the Pacific/UTC−7 zone, the `coreupdater.exe` spelling, a desktop user the key omits, and a local-admin password the key never lists).
 
 ---
@@ -144,7 +155,7 @@ The evidence is public (the referer trick is in Act 1). The toolchain is `apt in
 Named honestly, per 拋磚引玉:
 
 - **No independent second-toolchain cross-check yet.** A different forensic toolchain run over the same evidence would corroborate (or challenge) every finding for free.
-- **No screenshots / asciinema.** dmr39 earns half its punch from photos of the wiring mess. This repo has none yet — the two HTML renders carry the visual weight, which isn't the same.
+- **Images are real — except the hero, which is honestly synthetic.** The C2 terminal and the reckoning dashboard are screenshots of *actual* output; the question sheet is the real photo from the day. The hero is a **designed banner** in the repo's own palette — not a photograph, nothing staged as real (GenAI was out of credits, and faking a workshop photo would betray a repo whose whole point is honesty). Still missing: an asciinema/GIF of the live phone session.
 - **Command transcript not included.** The narrative asserts the commands; it doesn't yet show them. A `transcript/` with the actual `vol3` / `istat` / `secretsdump` invocations + outputs would let a reader follow along.
 - **The +1 h reconciliation deserves a diagram.** It's the subtlest part and currently lives in prose.
 - **Prose is first-pass.** Voice, pacing, and the Act breaks are draft-grade; the dmr39 bar is high.

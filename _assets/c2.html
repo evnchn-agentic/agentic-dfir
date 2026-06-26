@@ -1,0 +1,34 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{margin:0;box-sizing:border-box}
+body{background:#0d1117;padding:26px;font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:#e6edf3;width:980px}
+.win{background:#0b0f14;border:1px solid #30363d;border-radius:10px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.bar{background:#161b22;padding:9px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #30363d}
+.dot{width:11px;height:11px;border-radius:50%}
+.r{background:#f85149}.y{background:#e3b341}.g{background:#3fb950}
+.ttl{color:#8b949e;font-size:13px;margin-left:8px}
+.body{padding:16px 18px}
+.p{color:#7ee787}.c{color:#79c0ff}.dim{color:#8b949e}
+.cmd{color:#e6edf3}
+.out{color:#adbac7;white-space:pre;font-size:13.5px}
+.hot{color:#f85149;font-weight:700}
+.note{color:#ff9bdc;font-weight:700}
+.spacer{height:12px}
+hr{border:0;border-top:1px solid #21262d;margin:14px 0}
+</style></head><body>
+<div class="win">
+<div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="ttl">evnchn@.180:~/szechuan/work — volatility3 · the C2, on a phone over SSH</span></div>
+<div class="body">
+<div><span class="p">evnchn@.180</span>:<span class="c">~/szechuan/work</span>$ <span class="cmd">vol -f citadeldc01.mem windows.netscan | grep ESTABLISHED</span></div>
+<div class="spacer"></div>
+<div class="out">Offset(P)    Proto  LocalAddr     LPort  ForeignAddr        FPort  State        PID   Owner
+0x20fc7590   TCPv4  10.42.85.10   62613  <span class="hot">203.78.103.109     443    ESTABLISHED</span>  3644  coreupdater.ex
+0x60182590   TCPv4  10.42.85.10   62613  <span class="hot">203.78.103.109     443    ESTABLISHED</span>  3644  coreupdater.ex</div>
+<div class="dim">          └─ the only non-RFC1918 address in ~19,000 lines of socket scan. That's the C2.</div>
+<hr>
+<div><span class="p">evnchn@.180</span>:<span class="c">~/szechuan/work</span>$ <span class="cmd">vol -f citadeldc01.mem windows.malfind  # spoolsv.exe (PID 3724)</span></div>
+<div class="spacer"></div>
+<div class="out">Process: spoolsv.exe   Protection: PAGE_EXECUTE_READWRITE   Tag: VadS
+4d 5a 41 52 55 48 89 e5 48 83 ec 20 48 83 e4 f0   <span class="hot">MZARUH</span>..H.. H...   <span class="note">← Meterpreter x64 reflective-loader stub</span></div>
+<div class="dim">          coreupdater migrated into the print spooler. Injection confirmed.</div>
+</div></div>
+</body></html>
