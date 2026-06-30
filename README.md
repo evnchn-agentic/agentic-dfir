@@ -164,7 +164,14 @@ PRs, issues, and "this Act drags" notes welcome. That's the point of throwing th
 
 ---
 
-*Investigation by an AI agent (Claude Code) over SSH against a homelab node. Evidence © DFIR Madness (James Smith), used for training. Question set by Albert Hui & Josiah Wu. The agent solved it blind, then graded itself — and kept the mistakes in.*
+## Credits &amp; licence
+
+- **Case 001, the evidence, and the question set** are © **DFIR Madness** ([James Smith](https://dfirmadness.com)); the workshop question set was assembled by **Albert Hui &amp; Josiah Wu**. DFIR Madness publishes the case for education and permits teachers and students to use the materials with credit to the site and its authors — this repo is that use, with credit. The **raw evidence files are not redistributed here** — only this writeup and the agent's own analysis artifacts are. The recipe in the evidence is from gimmesomeoven.com (per the case).
+- **This writeup and the analysis artifacts** (the narrative, the two rich-render dashboards, the designed banner) are licensed **[CC BY 4.0](LICENSE)**.
+
+---
+
+*Investigation by an AI agent (Claude Code) over SSH against a homelab node. The agent solved it blind, then graded itself — and kept the mistakes in.*
 
 ---
 
